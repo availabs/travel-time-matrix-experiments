@@ -1,0 +1,45 @@
+diff --git a/.env b/.env
+index 897b1176..d1c85f04 100644
+--- a/.env
++++ b/.env
+@@ -7,7 +7,7 @@ AUTH0_ISSUER_BASE_URL=https://conveyal.eu.auth0.com
+ AUTH0_SECRET=
+ AUTH0_SESSION_ABSOLUTE_DURATION=false
+ AUTH0_SESSION_ROLLING_DURATION=2592000
+-MONGODB_URL=mongodb://127.0.0.1:27017/analysis
++MONGODB_URL=mongodb://127.0.0.1:27017/analysis?authSource=admin
+ 
+ # Public. No Auth0 creds needed if AUTH_DISABLED = true
+ NEXT_PUBLIC_ADMIN_ACCESS_GROUP=local
+@@ -15,5 +15,7 @@ NEXT_PUBLIC_API_URL=http://localhost:7070
+ NEXT_PUBLIC_AUTH_DISABLED=true
+ NEXT_PUBLIC_BASEMAP_DISABLED=false
+ NEXT_PUBLIC_CYPRESS=false
+-NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=false
+-NEXT_PUBLIC_MAPBOX_STYLE=mapbox/light-v10
+\ No newline at end of file
++
++NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.your.privatekey
++NEXT_PUBLIC_MAPBOX_STYLE=mapbox/light-v10
++
+diff --git a/analysis.properties b/analysis.properties
+index a78201fb..6ffa3194 100644
+--- a/analysis.properties
++++ b/analysis.properties
+@@ -11,7 +11,7 @@ auth0-secret=Y
+ admin-access-group=OFFLINE
+ 
+ # The host and port of the remote Mongo server (if any). Comment out for local Mongo instance.
+-# database-uri=mongodb://127.0.0.1:27017
++database-uri=mongodb://127.0.0.1:27017
+ 
+ # The name of the database in the Mongo instance.
+ database-name=analysis
+@@ -30,6 +30,7 @@ seamless-census-region=us-east-1
+ aws-region=eu-west-1
+ 
+ # The port on which the server will listen for connections from clients and workers.
++server-uri=127.0.0.1
+ server-port=7070
+ 
+ # A temporary location to store scratch files. The path can be absolute or relative.
