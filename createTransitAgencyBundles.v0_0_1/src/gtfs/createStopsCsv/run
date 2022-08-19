@@ -4,16 +4,16 @@ require("ts-node").register();
 
 const yargs = require("yargs");
 
-const { createStopsCsv } = require("./yargs_wrapper");
+const commands = require("./yargs_wrapper");
 
 const taskCommands = yargs.parserConfiguration({
   "camel-case-expansion": false,
   "flatten-duplicate-arrays": false,
 });
 
-const config = { ...createStopsCsv, command: "$0" };
-
-taskCommands.command(config);
+Object.keys(commands).forEach((cmd) => {
+  taskCommands.command(commands[cmd]);
+});
 
 taskCommands
   .demandCommand()
