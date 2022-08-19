@@ -74,8 +74,14 @@ CREATE TABLE trips (
 CREATE INDEX IF NOT EXISTS trips_trip_id_idx
   ON trips (trip_id) ;
 
-CREATE INDEX IF NOT EXISTS trips_times_service_id_idx
-  ON trips (service_id) ;
+-- CREATE INDEX IF NOT EXISTS trips_times_service_id_idx
+--   ON trips (service_id) ;
+-- 
+-- CREATE INDEX IF NOT EXISTS trips_times_route_id_idx
+--   ON trips (route_id) ;
+
+CREATE INDEX IF NOT EXISTS trips_times_shape_id_idx
+  ON trips (shape_id) ;
 
 
 DROP TABLE IF EXISTS stop_times ;
