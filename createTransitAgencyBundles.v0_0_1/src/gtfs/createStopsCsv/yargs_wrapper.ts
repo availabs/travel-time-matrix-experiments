@@ -41,7 +41,7 @@ export const createRouteStopsCsv = {
       type: "string",
     },
     routeId: {
-      desc: "The routeId identifyig the route whose stops to dump.to the GTFS SQLite Database",
+      desc: "The routeId identifying the route whose stops to dump.to the GTFS SQLite Database",
       demand: true,
       type: "string",
     },

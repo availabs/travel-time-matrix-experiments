@@ -42,7 +42,7 @@ export const createAllAgenciesHull = {
 };
 
 export const createRouteHullForAgency = {
-  desc: "Output the convex hull of all specified transit agencies with the specified buffer in miles.",
+  desc: "Output the convex hull of specified route.",
   command: "create_route_hull_for_agency",
   builder: {
     gtfsAgencySqlitePath: {
@@ -51,7 +51,7 @@ export const createRouteHullForAgency = {
       type: "string",
     },
     routeId: {
-      desc: "The routeId identifyig the route whose stops to dump.to the GTFS SQLite Database",
+      desc: "The routeId identifying the route whose stops to dump.to the GTFS SQLite Database",
       demand: true,
       type: "string",
     },
