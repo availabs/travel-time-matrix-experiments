@@ -15,8 +15,6 @@ const taskCommands = yargs.parserConfiguration({
 Object.keys(commands).forEach((cmd) => {
   const t = commands[cmd];
 
-  console.log(JSON.stringify(commands[cmd], null, 4));
-
   if (t.command && t.handler) {
     taskCommands.command(commands[cmd]);
   }

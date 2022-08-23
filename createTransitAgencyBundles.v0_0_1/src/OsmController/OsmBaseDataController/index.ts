@@ -4,18 +4,20 @@ import {
   ReadStream,
   createReadStream,
 } from "fs";
+
 import {
   mkdir as mkdirAsync,
   readFile as readFileAsync,
   rm as rmAsync,
 } from "fs/promises";
+
 import { pipeline } from "stream";
 import { promisify } from "util";
 import { join, basename, relative } from "path";
 
 import fetch from "node-fetch";
 
-import Database, { Database as SqliteDB } from "better-sqlite3";
+import AbstractBaseDataController from "../../core/AbstractBaseDataController";
 
 const pipelineAsync = promisify(pipeline);
 
@@ -38,47 +40,24 @@ export type DownloadOsmPbfParams = OsmPbfMetadata & {
 
 export type RemoveOsmPbfParams = OsmPbfMetadata;
 
-const baseDataDefaultDir = join(__dirname, "../../base_data/");
-
-const controlMetadataFileName = "_control_metadata_.sqlite3";
-
-class BaseDataControl {
-  protected _db: SqliteDB | null;
-
-  constructor(readonly baseDataDir: string = baseDataDefaultDir) {
-    this._db = null;
+class OsmBaseDataController extends AbstractBaseDataController {
+  constructor(dir?: string) {
+    super(dir);
   }
 
-  protected async getDB() {
-    if (this._db) {
-      return this._db;
-    }
-
-    await mkdirAsync(this.baseDataDir, { recursive: true });
-
-    const controlMetdataDbPath = join(
-      this.baseDataDir,
-      controlMetadataFileName
+  protected async initializeDatabaseTables() {
+    const sql = await readFileAsync(
+      join(__dirname, "./sql/create_control_metadata_tables.sql"),
+      { encoding: "utf-8" }
     );
 
-    const dbExists = existsSync(controlMetdataDbPath);
+    const db = await this.getDB();
 
-    this._db = new Database(controlMetdataDbPath);
-
-    if (!dbExists) {
-      const sql = await readFileAsync(
-        join(__dirname, "./sql/create_control_metadata_tables.sql"),
-        { encoding: "utf-8" }
-      );
-
-      this._db.exec(sql);
-    }
-
-    return this._db;
+    db.exec(sql);
   }
 
   get osmPbfsDir() {
-    return join(this.baseDataDir, "osm_pbfs");
+    return join(this.dir, "osm_pbfs");
   }
 
   protected getOsmPbfPath(osmPbfFileName: string) {
@@ -188,6 +167,22 @@ class BaseDataControl {
 
     db.exec("COMMIT;");
   }
+
+  async listOsmExtracts() {
+    const db = await this.getDB();
+
+    const q = `
+      SELECT
+          osm_extract_region,
+          osm_map_date
+        FROM osm_pbfs
+        ORDER BY 1, 2
+    `;
+
+    const list = db.prepare(q).all();
+
+    return list;
+  }
 }
 
-export default new BaseDataControl();
+export default new OsmBaseDataController();

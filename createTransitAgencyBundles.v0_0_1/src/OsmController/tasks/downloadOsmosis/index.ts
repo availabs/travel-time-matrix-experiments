@@ -12,7 +12,7 @@ import {
   osmosisVersion,
   osmosisLibDir,
   osmosisExecutablePath,
-} from "../constants";
+} from "../../constants";
 
 const pipelineAsync = promisify(pipeline);
 

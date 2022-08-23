@@ -1,4 +1,4 @@
-import BaseDataControl, { RemoveOsmPbfParams } from "..";
+import BaseDataControl, { RemoveOsmPbfParams } from "../OsmBaseDataController";
 
 export default async function removeOsmPbfToBaseData(
   params: RemoveOsmPbfParams

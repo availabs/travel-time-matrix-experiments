@@ -1,4 +1,6 @@
-import BaseDataControl, { DownloadOsmPbfParams } from "..";
+import BaseDataControl, {
+  DownloadOsmPbfParams,
+} from "../OsmBaseDataController";
 
 export default async function downloadOsmPbfToBaseData(
   params: DownloadOsmPbfParams
