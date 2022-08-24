@@ -7,6 +7,7 @@ import listGtfsFeedVersionsForAgency from "./list_gtfs_feed_versions_for_agency"
 import removeGtfsFeed from "./remove_gtfs_base_feed";
 import addGtfsAgencyToProj from "./add_gtfs_agency_to_project";
 import setGtfsAgencyFeedVersionForProj from "./gtfs_project_set_agency_feed_version";
+import createAllStopsCsvForProj from "./create_all_stops_csv";
 
 export const gtfsAgencyName = {
   desc: "GTFS Agency Name",
@@ -103,5 +104,18 @@ export const setGtfsAgencyFeedVersionForProject = {
     gtfsFeedVersion: GtfsFeedVersion;
   }) {
     return await setGtfsAgencyFeedVersionForProj(argv);
+  },
+};
+
+export const gtfsProjectCreateAllStopsCsv = {
+  desc: "Create a CSV with all stops for all agencies in the project.",
+  command: "gtfs_project_create_all_stops_csv",
+  builder: {
+    projectDataDir,
+  },
+  async handler(argv: { projectDataDir: string }) {
+    const { gtfsStopsSubsetName } = await createAllStopsCsvForProj(argv);
+
+    console.log("Created", gtfsStopsSubsetName);
   },
 };
