@@ -9,22 +9,19 @@ import {
   copyFile as copyFileAsync,
 } from "fs/promises";
 
-import { join, basename, dirname } from "path";
+import { join, basename } from "path";
 
 import tmp from "tmp";
 import AbstractBaseDataController from "../../core/AbstractBaseDataController";
 
 import loadGtfsIntoSqlite from "./subtasks/loadGtfsIntoSqlite";
 
-export type GtfsFeedMetadata = {
-  gtfsAgencyName: string;
-  gtfsFeedVersion: string;
-};
+import { GtfsAgencyName, GtfsFeedVersion } from "../index.d";
 
 export type AddGtfsFeedParams = {
-  gtfsAgencyName: GtfsFeedMetadata["gtfsAgencyName"];
+  gtfsAgencyName: GtfsAgencyName;
+  gtfsFeedVersion?: GtfsFeedVersion;
   gtfsFeedZipPath: string;
-  gtfsFeedVersion?: GtfsFeedMetadata["gtfsFeedVersion"];
 };
 
 export class GtfsBaseDataController extends AbstractBaseDataController {
@@ -165,6 +162,28 @@ export class GtfsBaseDataController extends AbstractBaseDataController {
     } catch (err) {
       throw err;
     }
+  }
+
+  async removeGtfsFeed(gtfsAgencyName: string, gtfsFeedVersion: string) {
+    const db = await this.getDB();
+
+    const q = `
+      DELETE FROM gtfs_feeds
+        WHERE (
+          ( gtfs_agency_name = ? )
+          AND
+          ( gtfs_feed_version = ? )
+        )
+    `;
+
+    db.prepare(q).run([gtfsAgencyName, gtfsFeedVersion]);
+
+    const gtfsFeedVersionDir = this.getGtfsAgencyFeedVersionDir(
+      gtfsAgencyName,
+      gtfsFeedVersion
+    );
+
+    await rmAsync(gtfsFeedVersionDir, { recursive: true, force: true });
   }
 
   async listGtfsAgencies() {

@@ -66,7 +66,6 @@ export const downloadOsmPbfToBaseData = {
     osmMapDate,
   },
   async handler(argv: DownloadOsmPbfParams) {
-    console.log(JSON.stringify({ argv }, null, 4));
     return await downloadOsmPbf(argv);
   },
 };

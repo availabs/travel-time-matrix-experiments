@@ -24,6 +24,7 @@ export default abstract class AbstractDataController {
     const controlMetdataDbPath = join(this.dir, controlMetadataFileName);
 
     this._db = new Database(controlMetdataDbPath);
+    this._db.pragma("foreign_keys = ON");
 
     await this.initializeDatabaseTables();
 
