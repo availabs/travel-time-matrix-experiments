@@ -4,11 +4,18 @@ import { join } from "path";
 
 import Database from "better-sqlite3";
 import * as csv from "fast-csv";
+import _ from "lodash";
 
 import AbstractDataController from "../../core/AbstractDataController";
 import GtfsBaseDataController from "../GtfsBaseDataController";
 
-import { GtfsFeedMetadata } from "../index.d";
+import {
+  GtfsAgencyName,
+  GtfsRouteId,
+  GtfsRouteShortName,
+  GtfsRouteLongName,
+  GtfsFeedMetadata,
+} from "../index.d";
 
 export default class GtfsDerivedDataController extends AbstractDataController {
   constructor(dir?: string) {
@@ -74,6 +81,27 @@ export default class GtfsDerivedDataController extends AbstractDataController {
     `;
 
     return db.prepare(q).all();
+  }
+
+  async updateGtfsStopsSubsetsMetadata(
+    gtfsStopsSubsetName: string,
+    metadata: object
+  ) {
+    const db = await this.getDB();
+
+    const insertMetaSql = `
+      INSERT INTO gtfs_stops_subsets (
+        gtfs_stops_subset_name,
+        metadata
+      ) VALUES ( ?, ? )
+        ON CONFLICT (gtfs_stops_subset_name)
+          DO UPDATE SET metadata = excluded.metadata
+    `;
+
+    db.prepare(insertMetaSql).run([
+      gtfsStopsSubsetName,
+      JSON.stringify(metadata),
+    ]);
   }
 
   async createAllStopsCsv() {
@@ -153,21 +181,126 @@ export default class GtfsDerivedDataController extends AbstractDataController {
       gtfsAgencyFeedVersions,
     };
 
+    await this.updateGtfsStopsSubsetsMetadata(gtfsStopsSubsetName, metadata);
+
+    return { gtfsStopsSubsetName };
+  }
+
+  async getAgencyFeedVersion(gtfsAgencyName: GtfsAgencyName) {
     const db = await this.getDB();
 
-    const insertMetaSql = `
-      INSERT INTO gtfs_stops_subsets (
-        gtfs_stops_subset_name,
-        metadata
-      ) VALUES ( ?, ? )
-        ON CONFLICT (gtfs_stops_subset_name)
-          DO UPDATE SET metadata = excluded.metadata
+    const q = `
+      SELECT
+          gtfs_feed_version
+        FROM gtfs_agency_feed_versions
+        WHERE ( gtfs_agency_name = ? )
     `;
 
-    db.prepare(insertMetaSql).run([
+    const gtfsFeedVersion = db.prepare(q).pluck().get([gtfsAgencyName]);
+
+    if (!gtfsFeedVersion) {
+      throw new Error(`No gtfsFeedVersion found for agency ${gtfsAgencyName}.`);
+    }
+
+    return gtfsFeedVersion;
+  }
+
+  async listGtfsRoutesForAgency(gtfsAgencyName: GtfsAgencyName): Promise<
+    {
+      gtfsRouteId: GtfsRouteId;
+      gtfsRouteShortName: GtfsRouteShortName;
+      gtfsRouteLongName: GtfsRouteLongName;
+    }[]
+  > {
+    const gtfsFeedVersion = await this.getAgencyFeedVersion(gtfsAgencyName);
+
+    const gtfsDbPath = GtfsBaseDataController.getGtfsAgencyFeedVersionDbPath(
+      gtfsAgencyName,
+      gtfsFeedVersion
+    );
+
+    const gtfsDb = new Database(gtfsDbPath);
+
+    const q = `
+      SELECT DISTINCT
+          route_id          AS gtfsRouteId,
+          route_short_name  AS gtfsRouteShortName,
+          route_long_name   AS gtfsRouteLongName
+        FROM routes
+        ORDER BY 1
+    `;
+
+    const rows = gtfsDb.prepare(q).all();
+
+    return rows;
+  }
+
+  async createAgencyRouteStopsCsv(
+    gtfsAgencyName: GtfsAgencyName,
+    gtfsRouteId: GtfsRouteId
+  ) {
+    const gtfsFeedVersion = await this.getAgencyFeedVersion(gtfsAgencyName);
+
+    const gtfsDbPath = GtfsBaseDataController.getGtfsAgencyFeedVersionDbPath(
+      gtfsAgencyName,
+      gtfsFeedVersion
+    );
+
+    await mkdirAsync(this.gtfsStopsDir, { recursive: true });
+
+    const normalizedRouteName = _.snakeCase(gtfsRouteId);
+    const gtfsStopsSubsetName = `${gtfsAgencyName}-route${normalizedRouteName}-stops`;
+
+    const csvPath = join(this.gtfsStopsDir, `${gtfsStopsSubsetName}.csv`);
+
+    const ws = createWriteStream(csvPath);
+
+    const stream = csv.format({ headers: ["stop_id", "stop_lat", "stop_lon"] });
+
+    stream.pipe(ws);
+
+    const q = `
+      SELECT DISTINCT
+          stop_id,
+          stop_lat,
+          stop_lon
+        FROM stops
+          INNER JOIN stop_times
+            USING (stop_id)
+          INNER JOIN trips
+            USING (trip_id)
+        WHERE ( route_id = ? )
+        ORDER BY stop_id
+    `;
+
+    const gtfsDb = new Database(gtfsDbPath);
+
+    const iter = gtfsDb.prepare(q).iterate([gtfsRouteId]);
+
+    for (const { stop_id, stop_lat, stop_lon } of iter) {
+      if (/::/.test(stop_id)) {
+        throw new Error("We need another delimiter for agency_name/stop_id");
+      }
+
+      stream.write({
+        stop_id: `${gtfsAgencyName}::${stop_id}`,
+        stop_lat,
+        stop_lon,
+      });
+    }
+
+    stream.end();
+    gtfsDb.close();
+
+    const metadata = {
+      type: "AGENCY_ROUTE_STOPS",
+      gtfsAgencyName,
+      gtfsFeedVersion,
+      gtfsRouteId,
       gtfsStopsSubsetName,
-      JSON.stringify(metadata),
-    ]);
+    };
+
+    await this.updateGtfsStopsSubsetsMetadata(gtfsStopsSubsetName, metadata);
 
     return { gtfsStopsSubsetName };
   }

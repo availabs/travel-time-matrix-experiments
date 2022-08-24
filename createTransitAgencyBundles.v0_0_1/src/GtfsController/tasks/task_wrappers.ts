@@ -1,5 +1,6 @@
 import { GtfsAgencyName, GtfsFeedMetadata, GtfsFeedVersion } from "../index.d";
 import { AddGtfsFeedParams } from "../GtfsBaseDataController";
+import GtfsDerivedDataController from "../GtfsDerivedDataController";
 
 import addGtfsFeed from "./add_gtfs_base_feed";
 import listGtfsAgencies from "./list_gtfs_agencies";
@@ -24,6 +25,12 @@ export const gtfsFeedZipPath = {
 export const gtfsFeedVersion = {
   desc: "GTFS Feed Version",
   demand: false,
+  type: "string",
+};
+
+export const gtfsRouteId = {
+  desc: "The routeId identifying the route whose stops to dump.to the GTFS SQLite Database",
+  demand: true,
   type: "string",
 };
 
@@ -117,5 +124,45 @@ export const gtfsProjectCreateAllStopsCsv = {
     const { gtfsStopsSubsetName } = await createAllStopsCsvForProj(argv);
 
     console.log("Created", gtfsStopsSubsetName);
+  },
+};
+
+export const gtfsProjectListRoutesForAgency = {
+  desc: "Show all routes in the agency's feed version in the project.",
+  command: "gtfs_project_show_routes_for_agency",
+  builder: {
+    projectDataDir,
+    gtfsAgencyName,
+  },
+  async handler({ projectDataDir, gtfsAgencyName }) {
+    const controller = new GtfsDerivedDataController(projectDataDir);
+
+    const list = await controller.listGtfsRoutesForAgency(gtfsAgencyName);
+
+    console.table(list);
+
+    return list;
+  },
+};
+
+export const gtfsProjectCreateAgencyRouteStopsCsv = {
+  desc: "Create a CSV with all route stops for an agency in the project.",
+  command: "gtfs_project_create_agency_route_stops_csv",
+  builder: {
+    projectDataDir,
+    gtfsAgencyName,
+    gtfsRouteId,
+  },
+  async handler({ projectDataDir, gtfsAgencyName, gtfsRouteId }) {
+    const controller = new GtfsDerivedDataController(projectDataDir);
+
+    const { gtfsStopsSubsetName } = await controller.createAgencyRouteStopsCsv(
+      gtfsAgencyName,
+      gtfsRouteId
+    );
+
+    console.log(`Created ${gtfsStopsSubsetName}`);
+
+    return { gtfsStopsSubsetName };
   },
 };
