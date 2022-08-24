@@ -2,9 +2,10 @@
 
 require("ts-node").register();
 
+const { command } = require("yargs");
 const yargs = require("yargs");
 
-const commands = require("./yargs_wrapper");
+const commands = require("./task_wrappers");
 
 const taskCommands = yargs.parserConfiguration({
   "camel-case-expansion": false,
@@ -12,7 +13,11 @@ const taskCommands = yargs.parserConfiguration({
 });
 
 Object.keys(commands).forEach((cmd) => {
-  taskCommands.command(commands[cmd]);
+  const t = commands[cmd];
+
+  if (t.command && t.handler) {
+    taskCommands.command(commands[cmd]);
+  }
 });
 
 taskCommands

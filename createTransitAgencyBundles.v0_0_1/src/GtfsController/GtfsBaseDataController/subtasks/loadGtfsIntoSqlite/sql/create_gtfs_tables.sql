@@ -6,9 +6,7 @@
 --        We MUST inspect the code to determine whether duplicates would cause
 --        calculation/analysis errors.
 
-DROP TABLE IF EXISTS agency ;
-
-CREATE TABLE agency (
+CREATE TABLE IF NOT EXISTS agency (
   agency_name      TEXT PRIMARY KEY,
   agency_id        TEXT,
   agency_url       TEXT,
@@ -20,9 +18,7 @@ CREATE TABLE agency (
 ) WITHOUT ROWID ;
 
 
-DROP TABLE IF EXISTS stops ;
-
-CREATE TABLE stops (
+CREATE TABLE IF NOT EXISTS stops (
   -- stop_id              TEXT PRIMARY KEY,
   stop_id              TEXT,
   stop_code            TEXT,
@@ -39,9 +35,7 @@ CREATE TABLE stops (
 );
 
 
-DROP TABLE IF EXISTS routes ;
-
-CREATE TABLE routes (
+CREATE TABLE IF NOT EXISTS routes (
   --  route_id          TEXT PRIMARY KEY,
   route_id          TEXT,
   agency_id         TEXT,
@@ -56,9 +50,7 @@ CREATE TABLE routes (
 ) ;
 
 
-DROP TABLE IF EXISTS trips ;
-
-CREATE TABLE trips (
+CREATE TABLE IF NOT EXISTS trips (
   route_id               TEXT,
   service_id             TEXT,
   trip_id                TEXT,
@@ -84,9 +76,7 @@ CREATE INDEX IF NOT EXISTS trips_times_shape_id_idx
   ON trips (shape_id) ;
 
 
-DROP TABLE IF EXISTS stop_times ;
-
-CREATE TABLE stop_times (
+CREATE TABLE IF NOT EXISTS stop_times (
   trip_id              TEXT,
   arrival_time         TEXT,
   departure_time       TEXT,
@@ -106,9 +96,7 @@ CREATE INDEX IF NOT EXISTS stop_times_trip_id_stop_id_idx
   ON stop_times (trip_id, stop_id) ;
 
 
-DROP TABLE IF EXISTS calendar ;
-
-CREATE TABLE calendar (
+CREATE TABLE IF NOT EXISTS calendar (
   service_id  TEXT PRIMARY KEY,
   monday      INTEGER NOT NULL CHECK (monday    IN (0, 1)),
   tuesday     INTEGER NOT NULL CHECK (tuesday   IN (0, 1)),
@@ -122,9 +110,7 @@ CREATE TABLE calendar (
 ) WITHOUT ROWID ;
 
 
-DROP TABLE IF EXISTS calendar_dates ;
-
-CREATE TABLE calendar_dates (
+CREATE TABLE IF NOT EXISTS calendar_dates (
   service_id      TEXT,
   date            TEXT NOT NULL,
   exception_type  TEXT NOT NULL,
@@ -133,9 +119,7 @@ CREATE TABLE calendar_dates (
 ) WITHOUT ROWID ;
 
 
-DROP TABLE IF EXISTS fare_attributes ;
-
-CREATE TABLE fare_attributes (
+CREATE TABLE IF NOT EXISTS fare_attributes (
   fare_id            TEXT PRIMARY KEY,
   price              REAL,
   currency_type      TEXT,
@@ -146,9 +130,7 @@ CREATE TABLE fare_attributes (
 ) WITHOUT ROWID;
 
 
-DROP TABLE IF EXISTS fare_rules ;
-
-CREATE TABLE fare_rules (
+CREATE TABLE IF NOT EXISTS fare_rules (
   fare_id         TEXT,
   route_id        TEXT,
   origin_id       TEXT,
@@ -157,9 +139,7 @@ CREATE TABLE fare_rules (
 );
 
 
-DROP TABLE IF EXISTS shapes ;
-
-CREATE TABLE shapes (
+CREATE TABLE IF NOT EXISTS shapes (
   shape_id             TEXT,
   shape_pt_lat         REAL NOT NULL,
   shape_pt_lon         REAL NOT NULL,
@@ -170,9 +150,7 @@ CREATE TABLE shapes (
 ) WITHOUT ROWID;
 
 
-DROP TABLE IF EXISTS frequencies ;
-
-CREATE TABLE frequencies (
+CREATE TABLE IF NOT EXISTS frequencies (
   trip_id       TEXT PRIMARY KEY,
   start_time    TEXT,
   end_time      TEXT,
@@ -181,9 +159,7 @@ CREATE TABLE frequencies (
 ) WITHOUT ROWID;
 
 
-DROP TABLE IF EXISTS transfers ;
-
-CREATE TABLE transfers (
+CREATE TABLE IF NOT EXISTS transfers (
   -- NOTE According to GTFS spec, from/to_stop_ids and transfer_type are REQUIRED.
   --   However, need to accomodate non-compliant feeds.
   from_stop_id      TEXT,
@@ -193,9 +169,7 @@ CREATE TABLE transfers (
 );
 
 
-DROP TABLE IF EXISTS feed_info ;
-
-CREATE TABLE feed_info (
+CREATE TABLE IF NOT EXISTS feed_info (
   feed_publisher_name  TEXT PRIMARY KEY,
   feed_publisher_url   TEXT,
   feed_lang            TEXT,
@@ -203,3 +177,11 @@ CREATE TABLE feed_info (
   feed_end_date        TEXT,
   feed_version         TEXT
 ) WITHOUT ROWID;
+
+CREATE VIEW IF NOT EXISTS feed_date_extent
+  AS
+    SELECT
+        MIN(start_date) AS feed_start_date ,
+        max(end_date) AS  feed_end_date
+      FROM calendar
+;

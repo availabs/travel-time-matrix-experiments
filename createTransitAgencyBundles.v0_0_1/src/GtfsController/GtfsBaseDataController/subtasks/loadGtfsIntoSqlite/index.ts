@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-syntax */
 
-import { readFileSync, mkdirSync, unlinkSync } from "fs";
-import { join, basename } from "path";
+import { readFileSync, unlinkSync, existsSync } from "fs";
+import { join, basename, relative } from "path";
 import { pipeline } from "stream";
 
 import Database, { Database as SqliteDatabase } from "better-sqlite3";
@@ -18,9 +18,9 @@ export type AsyncCsvRowGenerator = AsyncGenerator<CsvRow>;
 export type GtfsAgencyName = string;
 
 export type LoadGtfsIntoSqliteParams = {
-  gtfsZipPath: string;
-  gtfsAgencyName: string;
-  dbsDirPath: string;
+  gtfsFeedZipPath: string;
+  gtfsFeedDbPath: string;
+  clean?: boolean;
 };
 
 export enum GtfsTable {
@@ -218,27 +218,27 @@ export async function loadGtfsSpatialTables(db: SqliteDatabase) {
 }
 
 export default async function main({
-  gtfsZipPath,
-  gtfsAgencyName,
-  dbsDirPath,
-}) {
+  gtfsFeedZipPath,
+  gtfsFeedDbPath,
+  clean = false,
+}: LoadGtfsIntoSqliteParams) {
   try {
-    const timerId = `load ${gtfsAgencyName} GTFS Feed`;
+    const timerId = `load GTFS Feed`;
     console.time(timerId);
 
-    mkdirSync(dbsDirPath, { recursive: true });
+    const gtfsFilesIterator = makeGtfsFilesIterator(gtfsFeedZipPath);
 
-    const gtfsAgencySqlitePath = join(dbsDirPath, `${gtfsAgencyName}.sqlite3`);
-
-    const gtfsFilesIterator = makeGtfsFilesIterator(gtfsZipPath);
-
-    try {
-      unlinkSync(gtfsAgencySqlitePath);
-    } catch (err) {
-      //
+    if (existsSync(gtfsFeedDbPath)) {
+      if (clean) {
+        unlinkSync(gtfsFeedDbPath);
+      } else {
+        throw new Error(
+          `File already exists: ${relative(process.cwd(), gtfsFeedDbPath)}.`
+        );
+      }
     }
 
-    const db = new Database(gtfsAgencySqlitePath);
+    const db = new Database(gtfsFeedDbPath);
 
     db.pragma("journal_mode = WAL");
 
@@ -255,12 +255,10 @@ export default async function main({
     console.timeEnd(timerId);
 
     return {
-      gtfsZipPath,
-      gtfsAgencyName,
-      gtfsAgencySqlitePath,
+      gtfsFeedZipPath,
+      gtfsFeedDbPath,
     };
   } catch (err) {
-    console.error(err);
     throw err;
   }
 }

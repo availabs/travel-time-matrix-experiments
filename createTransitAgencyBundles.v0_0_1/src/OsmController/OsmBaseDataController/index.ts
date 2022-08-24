@@ -40,7 +40,7 @@ export type DownloadOsmPbfParams = OsmPbfMetadata & {
 
 export type RemoveOsmPbfParams = OsmPbfMetadata;
 
-class OsmBaseDataController extends AbstractBaseDataController {
+export class OsmBaseDataController extends AbstractBaseDataController {
   constructor(dir?: string) {
     super(dir);
   }
@@ -57,7 +57,7 @@ class OsmBaseDataController extends AbstractBaseDataController {
   }
 
   get osmPbfsDir() {
-    return join(this.dir, "osm_pbfs");
+    return join(this.dir, "osm");
   }
 
   protected getOsmPbfPath(osmPbfFileName: string) {
