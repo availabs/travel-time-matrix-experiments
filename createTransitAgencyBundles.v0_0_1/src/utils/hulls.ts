@@ -7,24 +7,18 @@ import _ from "lodash";
 
 const BATCH_SIZE = 10000;
 
-export function getGeometriesHull(
+export function getCoordsHull(
   concavity: number,
-  geometries:
-    | Generator<turf.Geometries | any[]>
-    | Array<turf.Geometries | any[]>
+  coordsIter: Generator<[number, number]>,
+  batchSize = BATCH_SIZE
 ) {
   let points: turf.Position[] = [];
   let counter = 0;
-  for (const geom of geometries) {
-    const geomPoints = _(turf.getCoords(geom))
-      .flattenDeep()
-      .chunk(2)
-      .uniqWith(_.isEqual)
-      .value();
 
-    points.push(...geomPoints);
+  for (const coord of coordsIter) {
+    points.push(coord);
 
-    if (++counter === BATCH_SIZE) {
+    if (++counter === batchSize) {
       points = concaveman(points, concavity);
     }
   }
@@ -34,30 +28,80 @@ export function getGeometriesHull(
   return turf.polygon([hullCoords]);
 }
 
-export async function getGeometriesHullAsync(
-  concavity: number,
-  geometries: AsyncGenerator<turf.Geometries | any[]>
+function* makeCoordsIterFromGeometriesIter(
+  geometries:
+    | Generator<turf.Geometries | any[]>
+    | Array<turf.Geometries | any[]>
 ) {
-  let points: turf.Position[] = [];
-  let counter = 0;
-
-  for await (const geom of geometries) {
-    const geomPoints = _(turf.getCoords(geom))
+  for (const geom of geometries) {
+    const coords = _(turf.getCoords(geom))
       .flattenDeep()
       .chunk(2)
       .uniqWith(_.isEqual)
       .value();
 
-    points.push(...geomPoints);
+    for (const coord of coords) {
+      yield <[number, number]>coord;
+    }
+  }
+}
 
-    if (++counter === BATCH_SIZE) {
+export function getGeometriesHull(
+  concavity: number,
+  geometries:
+    | Generator<turf.Geometries | any[]>
+    | Array<turf.Geometries | any[]>
+) {
+  const coordsIter = makeCoordsIterFromGeometriesIter(geometries);
+
+  return getCoordsHull(concavity, coordsIter);
+}
+
+export async function getCoordsHullAsync(
+  concavity: number,
+  coordsIter: AsyncGenerator<[number, number]>,
+  batchSize = BATCH_SIZE
+) {
+  let points: turf.Position[] = [];
+  let counter = 0;
+
+  for await (const coord of coordsIter) {
+    points.push(coord);
+
+    if (++counter === batchSize) {
       points = concaveman(points, concavity);
+      await new Promise((resolve) => process.nextTick(resolve));
     }
   }
 
   const hullCoords = concaveman(points, concavity);
 
   return turf.polygon([hullCoords]);
+}
+
+async function* makeCoordsAsyncIterFromAsyncGeometriesIter(
+  geometries: AsyncGenerator<turf.Geometries | any[]>
+) {
+  for await (const geom of geometries) {
+    const coords = _(turf.getCoords(geom))
+      .flattenDeep()
+      .chunk(2)
+      .uniqWith(_.isEqual)
+      .value();
+
+    for (const coord of coords) {
+      yield <[number, number]>coord;
+    }
+  }
+}
+
+export async function getGeometriesHullAsync(
+  concavity: number,
+  geometries: AsyncGenerator<turf.Geometries | any[]>
+) {
+  const coordsIter = makeCoordsAsyncIterFromAsyncGeometriesIter(geometries);
+
+  return getCoordsHullAsync(concavity, coordsIter);
 }
 
 export const getGeometriesConvexHull = getGeometriesHull.bind(null, Infinity);

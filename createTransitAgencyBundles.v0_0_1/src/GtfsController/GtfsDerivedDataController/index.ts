@@ -5,9 +5,13 @@ import { join } from "path";
 import Database from "better-sqlite3";
 import * as csv from "fast-csv";
 import _ from "lodash";
+import * as turf from "@turf/turf";
 
 import AbstractDataController from "../../core/AbstractDataController";
 import GtfsBaseDataController from "../GtfsBaseDataController";
+import RegionBoundariesDerivedDataController from "../../RegionBoundariesController/RegionBoundariesDerivedDataController";
+
+import { getGeometriesHullAsync } from "../../utils/hulls";
 
 import {
   GtfsAgencyName,
@@ -104,11 +108,11 @@ export default class GtfsDerivedDataController extends AbstractDataController {
     ]);
   }
 
-  async createAllStopsCsv() {
+  protected async getAllAgenciesFeedsMetadata() {
     const gtfsAgencyFeedVersions =
       await this.getProjectGtfsAgencyFeedVersions();
 
-    const gtfsAgencyFeedDbsMeta = gtfsAgencyFeedVersions.map(
+    const allAgenciesFeedsMetadata = gtfsAgencyFeedVersions.map(
       ({ gtfs_agency_name, gtfs_feed_version }) => {
         const gtfs_feed_version_db_path =
           GtfsBaseDataController.getGtfsAgencyFeedVersionDbPath(
@@ -129,6 +133,15 @@ export default class GtfsDerivedDataController extends AbstractDataController {
         };
       }
     );
+
+    return allAgenciesFeedsMetadata;
+  }
+
+  async createAllStopsCsv() {
+    const gtfsAgencyFeedVersions =
+      await this.getProjectGtfsAgencyFeedVersions();
+
+    const gtfsAgencyFeedDbsMeta = await this.getAllAgenciesFeedsMetadata();
 
     await mkdirAsync(this.gtfsStopsDir, { recursive: true });
 
@@ -303,5 +316,64 @@ export default class GtfsDerivedDataController extends AbstractDataController {
     await this.updateGtfsStopsSubsetsMetadata(gtfsStopsSubsetName, metadata);
 
     return { gtfsStopsSubsetName };
+  }
+
+  async createAllAgenciesHull({ bufferMiles = 15, concavity = 10 }) {
+    const gtfsAgencyFeedVersions =
+      await this.getProjectGtfsAgencyFeedVersions();
+
+    const gtfsAgencyFeedDbsMeta = await this.getAllAgenciesFeedsMetadata();
+
+    const q = `
+      SELECT
+          feature
+        FROM shape_linestrings
+    `;
+
+    async function* makePolyGenerator() {
+      for (const { gtfs_feed_version_db_path } of gtfsAgencyFeedDbsMeta) {
+        const gtfsDb = new Database(gtfs_feed_version_db_path);
+
+        const iter = gtfsDb.prepare(q).pluck().iterate();
+
+        for (const featureStr of iter) {
+          await new Promise((resolve) => process.nextTick(resolve));
+
+          const feature = JSON.parse(featureStr);
+          const poly = turf.buffer(feature, bufferMiles, { units: "miles" });
+          yield poly;
+        }
+      }
+    }
+
+    const polyGenerator = makePolyGenerator();
+
+    const regionBoundary = await getGeometriesHullAsync(
+      concavity,
+      // @ts-ignore
+      polyGenerator
+    );
+
+    const regionBoundaryName = `all_agencies.buffer-${bufferMiles}mi_concavity-${concavity}.geojson`;
+
+    const metadata = {
+      type: "ALL_AGENCIES_BUFFER_HULL",
+      regionBoundaryName,
+      gtfsAgencyFeedVersions,
+      bufferMiles,
+      concavity,
+    };
+
+    const regionsBoundaryController = new RegionBoundariesDerivedDataController(
+      this.dir
+    );
+
+    await regionsBoundaryController.addRegionBoundary(
+      regionBoundary,
+      regionBoundaryName,
+      metadata
+    );
+
+    return { regionBoundaryName };
   }
 }

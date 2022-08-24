@@ -166,3 +166,33 @@ export const gtfsProjectCreateAgencyRouteStopsCsv = {
     return { gtfsStopsSubsetName };
   },
 };
+
+export const createAllAgenciesHull = {
+  desc: "Output the convex hull of all transit agencies in the project.",
+  command: "create_all_agencies_hull",
+  builder: {
+    projectDataDir,
+    bufferMiles: {
+      desc: "Buffer miles",
+      type: "number",
+      default: 15,
+    },
+    concavity: {
+      desc: "Hull concavity. From https://github.com/mapbox/concaveman: concavity is a relative measure of concavity. 1 results in a relatively detailed shape, Infinity results in a convex hull. You can use values lower than 1, but they can produce pretty crazy shapes..",
+      type: "number",
+      default: 10,
+    },
+  },
+  async handler({ projectDataDir, bufferMiles, concavity }) {
+    const controller = new GtfsDerivedDataController(projectDataDir);
+
+    const { regionBoundaryName } = await controller.createAllAgenciesHull({
+      bufferMiles,
+      concavity,
+    });
+
+    console.log(`Created ${regionBoundaryName}`);
+
+    return { regionBoundaryName };
+  },
+};
