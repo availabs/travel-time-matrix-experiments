@@ -4,6 +4,8 @@ import {
   RemoveOsmPbfParams,
 } from "../OsmBaseDataController";
 
+import OsmDerivedDataController from "../OsmDerivedDataController";
+
 import addOsmPbf from "./add_osm_pbf";
 import downloadOsmPbf from "./download_osm_pbf";
 import removeOsmPbf from "./remove_osm_pbf";
@@ -39,6 +41,12 @@ export const osmMapDate = {
 
 export const projectDataDir = {
   desc: "The directory containing the project's derived data.",
+  demand: true,
+  type: "string",
+};
+
+export const regionBoundaryName = {
+  desc: "Region boundary name.",
   demand: true,
   type: "string",
 };
@@ -102,5 +110,18 @@ export const setProjectOsmBaseExtract = {
   },
   async handler(argv: SetProjectSetOsmBaseParams) {
     return await setProjectOsmBase(argv);
+  },
+};
+
+export const createOsmExtract = {
+  desc: "Create an OSM Region Export using the regionBoundary.",
+  command: "osm_project_create_region_export",
+  builder: {
+    projectDataDir,
+    regionBoundaryName,
+  },
+  async handler({ projectDataDir, regionBoundaryName }) {
+    const ctrlr = new OsmDerivedDataController(projectDataDir);
+    return await ctrlr.creatOsmRegionExtract(regionBoundaryName);
   },
 };

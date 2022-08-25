@@ -1,6 +1,8 @@
 import { join } from "path";
 
-export const libsDir = join(__dirname, "../../lib");
+export { default as tmpDirPath } from "../../constants/tmpDirPath";
+
+export const libsDir = join(__dirname, "../../../lib");
 
 export const osmosisVersion = "0.48.3";
 

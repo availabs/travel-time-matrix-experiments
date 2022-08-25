@@ -16,7 +16,7 @@ import {
 
 const pipelineAsync = promisify(pipeline);
 
-export default async function main() {
+export default async function downloadOsmosisToLibrary() {
   if (existsSync(osmosisExecutablePath)) {
     return { osmosisExecutablePath };
   }

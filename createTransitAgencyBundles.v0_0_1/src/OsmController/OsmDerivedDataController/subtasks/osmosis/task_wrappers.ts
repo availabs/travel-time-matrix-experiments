@@ -1,8 +1,8 @@
 import { relative } from "path";
 
-import main from ".";
+import main from "./downloadOsmosisToLibrary";
 
-export const downloadOsmosisExecutable = {
+export const downloadOsmosisToLibrary = {
   desc: "Download the Osmosis executable.",
   command: "download_osmosis",
   async handler() {

@@ -1,9 +1,12 @@
 import { readFile as readFileAsync } from "fs/promises";
-import { join, basename } from "path";
-
-import * as turf from "@turf/turf";
+import { join } from "path";
 
 import AbstractDataController from "../../core/AbstractDataController";
+import OsmBaseDataController from "../OsmBaseDataController";
+import RegionBoundariesController from "../../RegionBoundariesController/RegionBoundariesDerivedDataController";
+
+import createOsmExtract from "./subtasks/osmosis/createOsmExtract";
+import { mkdirSync } from "fs";
 
 export type OsmExtractMetadata = {
   osmExtractRegion: string;
@@ -82,18 +85,54 @@ export default class OsmDerivedDataController extends AbstractDataController {
     db.prepare(insertSql).run([osmExtractRegion, osmMapDate]);
   }
 
-  get osmExtractsDir() {
-    return join(this.dir, "osm_extracts");
+  async getOsmBaseExtract(): Promise<OsmExtractMetadata> {
+    const db = await this.getDB();
+
+    const q = `
+      SELECT
+          osm_extract_region AS osmExtractRegion,
+          osm_map_date AS osmMapDate
+        FROM osm_base_extract 
+    `;
+
+    return db.prepare(q).get();
   }
 
-  protected getOsmExtractPath(osmExtractName: string) {
-    const bname = basename(osmExtractName);
-    return join(this.osmExtractsDir, bname);
+  async getOsmBaseExtractPbfPath() {
+    const { osmExtractRegion, osmMapDate } = await this.getOsmBaseExtract();
+
+    const osmBaseExtractPbfPath = OsmBaseDataController.getOsmExtractFilePath(
+      osmExtractRegion,
+      osmMapDate
+    );
+
+    return osmBaseExtractPbfPath;
   }
 
-  protected getOsmExtractName(osmExtractRegion: string, osmMapDate: string) {
-    return `${osmExtractRegion}-${osmMapDate}`;
+  get osmRegionExtractsDir() {
+    const dir = join(this.dir, "osm_region_extracts");
+    mkdirSync(dir, { recursive: true });
+    return dir;
   }
 
-  creatOsmRegionExtract(boundingPolygon: turf.Feature<turf.MultiPolygon>) {}
+  protected getOsmRegionExtractPath(regionBoundaryName: string) {
+    const fname = `${regionBoundaryName}.osm.pbf`;
+
+    return join(this.osmRegionExtractsDir, fname);
+  }
+
+  async creatOsmRegionExtract(regionBoundaryName: string) {
+    const sourceOsmFilePath = await this.getOsmBaseExtractPbfPath();
+    const extractOsmFilePath = this.getOsmRegionExtractPath(regionBoundaryName);
+
+    const regBdryCntlr = new RegionBoundariesController(this.dir);
+    const regionBoundary =
+      regBdryCntlr.getRegionBoundaryFilePath(regionBoundaryName);
+
+    await createOsmExtract({
+      sourceOsmFilePath,
+      extractOsmFilePath,
+      regionBoundary,
+    });
+  }
 }

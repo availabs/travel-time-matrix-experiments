@@ -4,14 +4,14 @@ require("ts-node").register();
 
 const yargs = require("yargs");
 
-const { downloadOsmosisExecutable } = require("./yargs_wrapper");
+const { downloadOsmosisToLibrary } = require("./yargs_wrapper");
 
 const taskCommands = yargs.parserConfiguration({
   "camel-case-expansion": false,
   "flatten-duplicate-arrays": false,
 });
 
-const config = { ...downloadOsmosisExecutable, command: "$0" };
+const config = { ...downloadOsmosisToLibrary, command: "$0" };
 
 taskCommands.command(config);
 

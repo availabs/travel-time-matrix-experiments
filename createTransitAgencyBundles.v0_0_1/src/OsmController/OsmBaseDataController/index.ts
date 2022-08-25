@@ -57,7 +57,7 @@ export class OsmBaseDataController extends AbstractBaseDataController {
   }
 
   get osmPbfsDir() {
-    return join(this.dir, "osm");
+    return join(this.dir, "osm_pbfs");
   }
 
   protected getOsmPbfPath(osmPbfFileName: string) {
@@ -71,6 +71,13 @@ export class OsmBaseDataController extends AbstractBaseDataController {
 
   protected getOsmPbfFileName(osmExtractRegion: string, osmMapDate: string) {
     return `${osmExtractRegion}-${osmMapDate}.pbf`;
+  }
+
+  getOsmExtractFilePath(osmExtractRegion: string, osmMapDate: string) {
+    const fname = this.getOsmPbfFileName(osmExtractRegion, osmMapDate);
+    const fpath = join(this.osmPbfsDir, fname);
+
+    return fpath;
   }
 
   async addOsmPbfStream({
