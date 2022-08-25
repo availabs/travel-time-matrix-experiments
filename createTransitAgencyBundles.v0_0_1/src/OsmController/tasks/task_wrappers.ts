@@ -60,7 +60,6 @@ export const addOsmPbfToBaseData = {
     osmMapDate,
   },
   async handler(argv: AddOsmPbfFileParams) {
-    console.log(JSON.stringify({ argv }, null, 4));
     return await addOsmPbf(argv);
   },
 };

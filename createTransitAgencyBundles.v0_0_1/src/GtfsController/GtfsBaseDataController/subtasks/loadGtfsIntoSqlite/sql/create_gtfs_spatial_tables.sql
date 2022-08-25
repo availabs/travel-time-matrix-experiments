@@ -75,4 +75,5 @@ INSERT INTO shape_linestrings
       ) AS feature
     FROM shapes
     GROUP BY shape_id
+    HAVING COUNT(1) > 1
 ;

@@ -181,7 +181,34 @@ CREATE TABLE IF NOT EXISTS feed_info (
 CREATE VIEW IF NOT EXISTS feed_date_extent
   AS
     SELECT
-        MIN(start_date) AS feed_start_date ,
-        max(end_date) AS  feed_end_date
-      FROM calendar
+        feed_start_date,
+        feed_end_date
+      FROM (
+        SELECT
+            0 AS preference,
+            MIN(start_date) AS feed_start_date ,
+            MAX(end_date) AS  feed_end_date
+          FROM calendar
+        UNION ALL
+        SELECT
+            1 AS preference,
+            MIN(date) AS feed_start_date ,
+            max(date) AS  feed_end_date
+          FROM calendar_dates
+          WHERE ( exception_type = 1 )
+        UNION ALL
+        SELECT
+            2 AS preference,
+            MIN(feed_start_date) AS feed_start_date ,
+            max(feed_end_date) AS  feed_end_date
+          FROM feed_info
+      )
+      WHERE (
+        (  feed_start_date IS NOT NULL )
+        AND
+        ( feed_end_date IS NOT NULL )
+      )
+
+      ORDER BY preference
+      LIMIT 1
 ;
