@@ -354,7 +354,7 @@ export default class GtfsDerivedDataController extends AbstractDataController {
       polyGenerator
     );
 
-    const regionBoundaryName = `all_agencies.buffer-${bufferMiles}mi_concavity-${concavity}.geojson`;
+    const regionBoundaryName = `all_agencies.buffer-${bufferMiles}mi_concavity-${concavity}`;
 
     const metadata = {
       type: "ALL_AGENCIES_BUFFER_HULL",
