@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+
+require("ts-node").register();
+
+const { command } = require("yargs");
+const yargs = require("yargs");
+
+const osmCommands = require("./src/OsmController/tasks/task_wrappers.ts");
+const gtfsCommands = require("./src/GtfsController/tasks/task_wrappers");
+
+const taskCommands = yargs.parserConfiguration({
+  "camel-case-expansion": false,
+  "flatten-duplicate-arrays": false,
+});
+
+const addCommands = (commands) =>
+  Object.keys(commands).forEach((cmd) => {
+    const t = commands[cmd];
+
+    if (t.command && t.handler) {
+      taskCommands.command(commands[cmd]);
+    }
+  });
+
+addCommands(osmCommands);
+addCommands(gtfsCommands);
+
+taskCommands
+  .demandCommand()
+  .recommendCommands()
+  .strict()
+  .wrap(yargs.terminalWidth() / 1.618).argv;
