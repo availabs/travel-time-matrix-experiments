@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+
+git checkout e5cabde2f6f1b6a35db9b2328630fad1691b2653
+
+git apply get-it-running-diff.analysis-ui.v0_1_1.patch
+
+yarn install
+
+yarn build

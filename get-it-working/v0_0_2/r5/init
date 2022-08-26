@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+
+git checkout 302224c226de16c146eaf0365eef04a812c11096
+
+git apply ./get-it-running-diff.r5.v0_1_2.patch
+
+
+# Downloading: gradle 7.5.1
+# Downloading: java 17.0.4-tem
+# Downloading: maven 3.8.6
+
+gradle clean build shadowJar -x test
+
+
+docker \
+  build . \
+  --build-arg r5version=$(cat build/resources/main/com/conveyal/r5/version.txt) \
+  --tag local-conveyal-r5:6.4

@@ -1,0 +1,69 @@
+diff --git a/analysis.properties.docker b/analysis.properties.docker
+index f1f8c79d..0303f853 100644
+--- a/analysis.properties.docker
++++ b/analysis.properties.docker
+@@ -15,3 +15,4 @@ local-cache=cache
+ light-threads=3
+ heavy-threads=3
+ max-workers=8
++immediate-shutdown=false
+diff --git a/build.gradle b/build.gradle
+index 50390bd7..519ce38e 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -1,6 +1,6 @@
+ plugins {
+     id 'java'
+-    id 'com.github.johnrengelman.shadow' version '6.0.0'
++    id 'com.github.johnrengelman.shadow' version '7.0.0'
+     id 'maven-publish'
+     id 'com.palantir.git-version' version '0.12.3'
+ }
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 3e2da62c..f2b2ca30 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -5,38 +5,31 @@ version: '3'
+ services:
+   r5:
+     container_name: r5
+-    build: .
+-    # image: ghcr.io/conveyal/r5:latest
++    image: local-conveyal-r5:6.4
+     depends_on:
+       - mongo
+     links:
+       - mongo
+     ports:
+       - "7070:7070"
+-    # TODO volumes for backend cache directory
+   ui:
+     container_name: ui
+     depends_on:
+       - mongo
+-    # build: ../analysis-ui
+-    # image: ghcr.io/conveyal/analysis-ui:latest
+-    image: 037a38bb2cdf
++    image: node:12
+     ports:
+       - "3000:3000"
+     links:
+       - r5
+       - mongo
+-    # Map in a config file with mapbox keys, telling the UI to contact host (container) r5
+     volumes:
+-      - ./ui-env:/ui/.env.local:ro
++      - ./analysis-ui:/analysis-ui
++    command: bash -c 'cd /analysis-ui && ./run'
+   mongo:
+     container_name: mongo
+     image: mongo
+-    restart: always
+     volumes:
+-      - mongo-volume:/data/db:rw
+-    ports:
+-      - "27017:27017"
++      - ./mongo-data:/data/db:rw
+ 
+ volumes:
+   mongo-volume:
