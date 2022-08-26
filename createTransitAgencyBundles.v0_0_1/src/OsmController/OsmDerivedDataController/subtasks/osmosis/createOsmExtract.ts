@@ -62,12 +62,14 @@ export type CreateOsmExportParams = {
   sourceOsmFilePath: string;
   extractOsmFilePath: string;
   regionBoundary: turf.Feature<turf.MultiPolygon> | string;
+  filterOsm: boolean;
 };
 
 export default async function createOsmExtract({
   sourceOsmFilePath,
   extractOsmFilePath,
   regionBoundary,
+  filterOsm = true,
 }: CreateOsmExportParams) {
   if (typeof regionBoundary === "string") {
     const str = await readFileAsync(regionBoundary, { encoding: "utf8" });
@@ -89,13 +91,33 @@ export default async function createOsmExtract({
     await downloadOsmosisToLibrary();
   }
 
+  //  https://docs.conveyal.com/prepare-inputs#filtering
+  //    OpenStreetMap contains a lot of data besides the streets, paths, and
+  //    platforms we need for accessibility analysis. As of this writing more than
+  //    half of the ways in OSM are buildings, and slightly less than a quarter
+  //    are roads or paths. Filtering out unneeded data will reduce your file size
+  //    and speed the upload and processing by Analysis. As in the previous
+  //    section, sample commands are provided below that will remove any
+  //    unnecessary tags and should dramatically reduce the output file size.
+  const filteringFlags = filterOsm
+    ? `--tf accept-ways \
+          highway=* \
+          public_transport=platform \
+          railway=platform \
+          park_ride=* \
+      --tf accept-relations \
+          type=restriction \
+      --used-node`
+    : "";
+
   const command = `${osmosisExecutablePath} \
       --read-pbf-fast file=${sourceOsmFilePath} \
       --sort type="TypeThenId" \
+      ${filteringFlags} \
       --bounding-polygon \
           file=${tmpFile.name} \
           completeWays=yes \
-      --write-pbf ${extractOsmFilePath}
+      --write-pbf ${extractOsmFilePath} \
     `;
 
   // console.log(command);
