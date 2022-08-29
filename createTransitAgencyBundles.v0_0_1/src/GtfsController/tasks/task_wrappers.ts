@@ -1,10 +1,10 @@
 import { GtfsAgencyName, GtfsFeedMetadata, GtfsFeedVersion } from "../index.d";
 import { AddGtfsFeedParams } from "../GtfsBaseDataController";
+import GtfsBaseDataController from "../GtfsBaseDataController";
 import GtfsDerivedDataController from "../GtfsDerivedDataController";
 
 import addGtfsFeed from "./add_gtfs_base_feed";
 import listGtfsAgencies from "./list_gtfs_agencies";
-import listGtfsFeedVersionsForAgency from "./list_gtfs_feed_versions_for_agency";
 import removeGtfsFeed from "./remove_gtfs_base_feed";
 import addGtfsAgencyToProj from "./add_gtfs_agency_to_project";
 import setGtfsAgencyFeedVersionForProj from "./gtfs_project_set_agency_feed_version";
@@ -61,12 +61,23 @@ export const listGtfsBaseAgencies = {
   },
 };
 
-export const listGtfsFeedVersions = {
-  desc: "List the GTFS agencies in the base data.",
-  command: "gtfs_list_feed_versions",
+export const listGtfsAgencyFeedVersions = {
+  desc: "List the GTFS feed versions for the specified GTFS agency in the base_data.",
+  command: "gtfs_list_all_feed_versions_for_agency",
   builder: { gtfsAgencyName },
-  async handler(params: { gtfsAgencyName: string }) {
-    return await listGtfsFeedVersionsForAgency(params);
+  async handler({ gtfsAgencyName }: { gtfsAgencyName: string }) {
+    return await GtfsBaseDataController.listGtfsFeedVersionsForAgency(
+      gtfsAgencyName
+    );
+  },
+};
+
+export const listGtfsAllFeedVersions = {
+  desc: "List the ALL GTFS feed versions in the base_data.",
+  command: "gtfs_list_all_feed_versions",
+  async handler() {
+    const d = await GtfsBaseDataController.listAllGtfsFeedVersions();
+    console.table(d);
   },
 };
 
@@ -124,6 +135,28 @@ export const gtfsProjectCreateAllStopsCsv = {
     const { gtfsStopsSubsetName } = await createAllStopsCsvForProj(argv);
 
     console.log("Created", gtfsStopsSubsetName);
+  },
+};
+
+export const gtfsProjectListAgenciesMetatdata = {
+  desc: "Show GTFS feed metadata for all feeds in the project.",
+  command: "gtfs_project_show_gtfs_feeds_metadata",
+  builder: {
+    projectDataDir,
+  },
+  async handler({ projectDataDir }) {
+    const controller = new GtfsDerivedDataController(projectDataDir);
+
+    const list = await controller.getAllAgenciesFeedsMetadata();
+
+    const meta = list.map(({ gtfs_agency_name, gtfs_feed_version }) => ({
+      gtfs_agency_name,
+      gtfs_feed_version,
+    }));
+
+    console.table(meta);
+
+    return list;
   },
 };
 

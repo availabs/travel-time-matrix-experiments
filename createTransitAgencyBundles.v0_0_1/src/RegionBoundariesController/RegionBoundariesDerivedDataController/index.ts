@@ -3,10 +3,10 @@ import {
   writeFile as writeFileAsync,
   mkdir as mkdirAsync,
 } from "fs/promises";
-import { join } from "path";
+import { join, dirname } from "path";
 
-import Database from "better-sqlite3";
 import * as turf from "@turf/turf";
+import _ from "lodash";
 
 import AbstractDataController from "../../core/AbstractDataController";
 
@@ -37,20 +37,30 @@ export default class RegionBoundariesDerivedDataController extends AbstractDataC
     return fpath;
   }
 
+  get regionBoundingBoxesDir() {
+    return join(this.dir, "region_bboxes");
+  }
+
+  getRegionBoundingBoxFilePath(regionBoundaryName: string) {
+    const fname = `${regionBoundaryName}.geojson`;
+    const fpath = join(this.regionBoundingBoxesDir, fname);
+
+    return fpath;
+  }
+
   async addRegionBoundary(
     regionBoundary: turf.Feature<turf.Polygon>,
     regionBoundaryName: string,
     metadata: object
   ) {
-    await mkdirAsync(this.regionBoundariesDir, { recursive: true });
+    const bndryFPath = this.getRegionBoundaryFilePath(regionBoundaryName);
+    await mkdirAsync(dirname(bndryFPath), { recursive: true });
 
-    const fpath = this.getRegionBoundaryFilePath(regionBoundaryName);
-
-    await writeFileAsync(fpath, JSON.stringify(regionBoundary));
+    await writeFileAsync(bndryFPath, JSON.stringify(regionBoundary));
 
     const db = await this.getDB();
 
-    const q = `
+    const insrtBndry = `
       INSERT INTO region_boundaries (
         region_boundary_name,
         metadata
@@ -59,6 +69,85 @@ export default class RegionBoundariesDerivedDataController extends AbstractDataC
           DO UPDATE SET metadata = excluded.metadata
     `;
 
-    db.prepare(q).run([regionBoundaryName, JSON.stringify(metadata)]);
+    db.prepare(insrtBndry).run([regionBoundaryName, JSON.stringify(metadata)]);
+
+    const bbox = turf.bbox(regionBoundary);
+
+    const bboxFPath = this.getRegionBoundingBoxFilePath(regionBoundaryName);
+    await mkdirAsync(dirname(bboxFPath), { recursive: true });
+
+    await writeFileAsync(bboxFPath, JSON.stringify(bbox));
+
+    const insertBBox = `
+      INSERT INTO region_bbox (
+        region_boundary_name,
+        min_lon,
+        min_lat,
+        max_lon,
+        max_lat
+      ) VALUES ( ?, ?, ?, ?, ? )
+        ON CONFLICT(region_boundary_name)
+          DO UPDATE
+            SET
+              min_lon = excluded.min_lon,
+              min_lat = excluded.min_lat,
+              max_lon = excluded.max_lon,
+              max_lat = excluded.max_lat
+    `;
+
+    db.prepare(insertBBox).run([regionBoundaryName, ...bbox]);
+  }
+
+  async getAllRegionsBoundaryNames() {
+    const db = await this.getDB();
+
+    const q = `
+      SELECT
+          region_boundary_name
+        FROM region_boundaries
+        ORDER BY 1
+    `;
+
+    const rows = db.prepare(q).pluck().all();
+
+    return rows;
+  }
+
+  async getAllRegionsMetadata() {
+    const db = await this.getDB();
+
+    const q = `
+      SELECT
+          region_boundary_name,
+          metadata
+        FROM region_boundaries
+        ORDER BY 1
+    `;
+
+    const rows = db.prepare(q).all();
+    const result = rows.map(({ region_boundary_name, metadata }) => ({
+      region_boundary_name,
+      metadata: JSON.parse(metadata),
+    }));
+
+    return result;
+  }
+
+  async getRegionBoundingBox(regionBoundaryName: string) {
+    const db = await this.getDB();
+
+    const q = `
+      SELECT
+          min_lon,
+          min_lat,
+          max_lon,
+          max_lat
+        FROM region_bbox
+        WHERE ( region_boundary_name = ? )
+    `;
+
+    const result = db.prepare(q).get([regionBoundaryName]);
+
+    return result;
   }
 }

@@ -2,11 +2,12 @@
 
 require("ts-node").register();
 
-const { command } = require("yargs");
 const yargs = require("yargs");
 
 const osmCommands = require("./src/OsmController/tasks/task_wrappers.ts");
 const gtfsCommands = require("./src/GtfsController/tasks/task_wrappers");
+const regionCommands = require("./src/RegionBoundariesController/tasks/task_wrappers");
+const exportCommands = require("./src/BundleExportController/tasks/task_wrappers");
 
 const taskCommands = yargs.parserConfiguration({
   "camel-case-expansion": false,
@@ -24,6 +25,8 @@ const addCommands = (commands) =>
 
 addCommands(osmCommands);
 addCommands(gtfsCommands);
+addCommands(regionCommands);
+addCommands(exportCommands);
 
 taskCommands
   .demandCommand()

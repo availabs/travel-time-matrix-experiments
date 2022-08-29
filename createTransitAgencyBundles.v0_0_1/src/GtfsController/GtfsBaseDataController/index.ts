@@ -17,6 +17,7 @@ import AbstractBaseDataController from "../../core/AbstractBaseDataController";
 import loadGtfsIntoSqlite from "./subtasks/loadGtfsIntoSqlite";
 
 import { GtfsAgencyName, GtfsFeedVersion } from "../index.d";
+import { gtfsAgencyName } from "../tasks/task_wrappers";
 
 export type AddGtfsFeedParams = {
   gtfsAgencyName: GtfsAgencyName;
@@ -77,6 +78,32 @@ export class GtfsBaseDataController extends AbstractBaseDataController {
     return join(
       this.getGtfsAgencyFeedVersionDir(gtfsAgencyName, gtfsFeedVersion),
       fname
+    );
+  }
+
+  async getGtfsFeedFilePath(gtfsAgencyName: string, gtfsFeedVersion: string) {
+    const db = await this.getDB();
+
+    const q = `
+      SELECT
+          gtfs_feed_file_name
+        FROM gtfs_feeds
+        WHERE (
+          ( gtfs_agency_name = ? )
+          AND
+          ( gtfs_feed_version = ? )
+        )
+    `;
+
+    const gtfsFeedFileName = db
+      .prepare(q)
+      .pluck()
+      .get([gtfsAgencyName, gtfsFeedVersion]);
+
+    return this.getGtfsAgencyFeedVersionZipPath(
+      gtfsAgencyName,
+      gtfsFeedVersion,
+      gtfsFeedFileName
     );
   }
 
@@ -215,6 +242,22 @@ export class GtfsBaseDataController extends AbstractBaseDataController {
     const list = db.prepare(q).pluck().all([gtfsAgencyName]);
 
     return list;
+  }
+
+  async listAllGtfsFeedVersions() {
+    const gtfsAgencyNames = await this.listGtfsAgencies();
+    const feedVersions = await Promise.all(
+      gtfsAgencyNames.map(async (gtfsAgencyName) =>
+        this.listGtfsFeedVersionsForAgency(gtfsAgencyName)
+      )
+    );
+
+    const d = gtfsAgencyNames.map((gtfsAgencyName, i) => ({
+      gtfsAgencyName,
+      gtfsFeedVersions: feedVersions[i],
+    }));
+
+    return d;
   }
 }
 

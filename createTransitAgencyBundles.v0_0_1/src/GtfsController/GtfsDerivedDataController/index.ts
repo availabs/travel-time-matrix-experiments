@@ -82,6 +82,7 @@ export default class GtfsDerivedDataController extends AbstractDataController {
           gtfs_agency_name,
           gtfs_feed_version
         FROM gtfs_agency_feed_versions
+        ORDER BY 1
     `;
 
     return db.prepare(q).all();
@@ -108,30 +109,39 @@ export default class GtfsDerivedDataController extends AbstractDataController {
     ]);
   }
 
-  protected async getAllAgenciesFeedsMetadata() {
+  async getAllAgenciesFeedsMetadata() {
     const gtfsAgencyFeedVersions =
       await this.getProjectGtfsAgencyFeedVersions();
 
-    const allAgenciesFeedsMetadata = gtfsAgencyFeedVersions.map(
-      ({ gtfs_agency_name, gtfs_feed_version }) => {
-        const gtfs_feed_version_db_path =
-          GtfsBaseDataController.getGtfsAgencyFeedVersionDbPath(
+    const allAgenciesFeedsMetadata = await Promise.all(
+      gtfsAgencyFeedVersions.map(
+        async ({ gtfs_agency_name, gtfs_feed_version }) => {
+          const gtfs_feed_version_zip_path =
+            await GtfsBaseDataController.getGtfsFeedFilePath(
+              gtfs_agency_name,
+              gtfs_feed_version
+            );
+
+          const gtfs_feed_version_db_path =
+            GtfsBaseDataController.getGtfsAgencyFeedVersionDbPath(
+              gtfs_agency_name,
+              gtfs_feed_version
+            );
+
+          if (!gtfs_feed_version_db_path) {
+            throw new Error(
+              `No GTFS DB found in the base data for agency ${gtfs_agency_name} feed version ${gtfs_feed_version}.`
+            );
+          }
+
+          return {
             gtfs_agency_name,
-            gtfs_feed_version
-          );
-
-        if (!gtfs_feed_version_db_path) {
-          throw new Error(
-            `No GTFS DB found in the base data for agency ${gtfs_agency_name} feed version ${gtfs_feed_version}.`
-          );
+            gtfs_feed_version,
+            gtfs_feed_version_db_path,
+            gtfs_feed_version_zip_path,
+          };
         }
-
-        return {
-          gtfs_agency_name,
-          gtfs_feed_version,
-          gtfs_feed_version_db_path,
-        };
-      }
+      )
     );
 
     return allAgenciesFeedsMetadata;
