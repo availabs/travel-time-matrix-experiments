@@ -21,6 +21,8 @@ import {
   GtfsFeedMetadata,
 } from "../index.d";
 
+const DEFAULT_BUFFER_MI = 15;
+
 export default class GtfsDerivedDataController extends AbstractDataController {
   constructor(dir?: string) {
     super(dir);
@@ -258,6 +260,55 @@ export default class GtfsDerivedDataController extends AbstractDataController {
     return rows;
   }
 
+  async *makeAgencyFeedShapesAsyncGenerator(
+    gtfsAgencyName: string
+  ): AsyncGenerator<turf.Feature<turf.LineString>> {
+    const gtfsFeedVersion = await this.getAgencyFeedVersion(gtfsAgencyName);
+
+    const iter = GtfsBaseDataController.makeGtfsFeedShapesIterator(
+      gtfsAgencyName,
+      gtfsFeedVersion
+    );
+
+    for await (const feature of iter) {
+      yield feature;
+    }
+  }
+
+  async *makeAllAgenciesShapesAsyncGenerator(): AsyncGenerator<
+    turf.Feature<turf.LineString>
+  > {
+    const gtfsAgencyFeedDbsMeta = await this.getAllAgenciesFeedsMetadata();
+
+    for (const {
+      gtfs_agency_name,
+      gtfs_feed_version,
+    } of gtfsAgencyFeedDbsMeta) {
+      const iter = this.makeAgencyFeedShapesAsyncGenerator(gtfs_agency_name);
+
+      for await (const feature of iter) {
+        await new Promise((resolve) => process.nextTick(resolve));
+
+        // @ts-ignore
+        feature.properties.gtfsAgencyName = gtfs_agency_name;
+        // @ts-ignore
+        feature.properties.gtfsFeedVersion = gtfs_feed_version;
+
+        yield feature;
+      }
+    }
+  }
+
+  async *makePolyGenerator(bufferMiles: number = DEFAULT_BUFFER_MI) {
+    const iter = this.makeAllAgenciesShapesAsyncGenerator();
+    for await (const feature of iter) {
+      await new Promise((resolve) => process.nextTick(resolve));
+
+      const poly = turf.buffer(feature, bufferMiles, { units: "miles" });
+      yield poly;
+    }
+  }
+
   async createAgencyRouteStopsCsv(
     gtfsAgencyName: GtfsAgencyName,
     gtfsRouteId: GtfsRouteId
@@ -328,35 +379,14 @@ export default class GtfsDerivedDataController extends AbstractDataController {
     return { gtfsStopsSubsetName };
   }
 
-  async createAllAgenciesHull({ bufferMiles = 15, concavity = 10 }) {
+  async createAllAgenciesHull({
+    bufferMiles = DEFAULT_BUFFER_MI,
+    concavity = 10,
+  }) {
     const gtfsAgencyFeedVersions =
       await this.getProjectGtfsAgencyFeedVersions();
 
-    const gtfsAgencyFeedDbsMeta = await this.getAllAgenciesFeedsMetadata();
-
-    const q = `
-      SELECT
-          feature
-        FROM shape_linestrings
-    `;
-
-    async function* makePolyGenerator() {
-      for (const { gtfs_feed_version_db_path } of gtfsAgencyFeedDbsMeta) {
-        const gtfsDb = new Database(gtfs_feed_version_db_path);
-
-        const iter = gtfsDb.prepare(q).pluck().iterate();
-
-        for (const featureStr of iter) {
-          await new Promise((resolve) => process.nextTick(resolve));
-
-          const feature = JSON.parse(featureStr);
-          const poly = turf.buffer(feature, bufferMiles, { units: "miles" });
-          yield poly;
-        }
-      }
-    }
-
-    const polyGenerator = makePolyGenerator();
+    const polyGenerator = this.makePolyGenerator(bufferMiles);
 
     const regionBoundary = await getGeometriesHullAsync(
       concavity,

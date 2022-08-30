@@ -11,6 +11,7 @@ import {
 
 import { join, basename } from "path";
 
+import * as turf from "@turf/turf";
 import tmp from "tmp";
 import AbstractBaseDataController from "../../core/AbstractBaseDataController";
 
@@ -18,6 +19,7 @@ import loadGtfsIntoSqlite from "./subtasks/loadGtfsIntoSqlite";
 import getHash from "../../utils/getHash";
 
 import { GtfsAgencyName, GtfsFeedVersion } from "../index.d";
+import { gtfsFeedZipPath } from "../tasks/task_wrappers";
 
 export type AddGtfsFeedParams = {
   gtfsAgencyName: GtfsAgencyName;
@@ -266,6 +268,33 @@ export class GtfsBaseDataController extends AbstractBaseDataController {
     }));
 
     return d;
+  }
+
+  async *makeGtfsFeedShapesIterator(
+    gtfsAgencyName: string,
+    gtfsFeedVersion: string
+  ): AsyncGenerator<turf.Feature<turf.LineString>> {
+    const feedDbPath = this.getGtfsAgencyFeedVersionDbPath(
+      gtfsAgencyName,
+      gtfsFeedVersion
+    );
+
+    const gtfsDb = new Database(feedDbPath);
+
+    const q = `
+      SELECT
+          feature
+        FROM shape_linestrings
+    `;
+
+    const iter = gtfsDb.prepare(q).pluck().iterate();
+
+    for (const featureStr of iter) {
+      await new Promise((resolve) => process.nextTick(resolve));
+
+      const feature = JSON.parse(featureStr);
+      yield feature;
+    }
   }
 }
 

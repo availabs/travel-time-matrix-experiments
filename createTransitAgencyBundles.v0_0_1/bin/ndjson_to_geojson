@@ -1,0 +1,40 @@
+#!/usr/bin/env node
+
+// Takes a NDJSON file of GeoJSON feaures via STDIN
+//   And outputs to STDOUT a valid GeoJSON object
+
+const through = require("through2");
+const split = require("split2");
+
+function ndjson_to_geojson(inStream, outStream) {
+  let firstLine = true;
+
+  process.stdin
+    .pipe(split())
+    .pipe(
+      through(
+        function bidirectionalWayCreator(line, _, cb) {
+          this.push(
+            firstLine ? '{"type": "FeatureCollection","features": [' : ","
+          );
+          firstLine = false;
+
+          this.push(line);
+          cb();
+        },
+        function flush(cb) {
+          if (!firstLine) {
+            this.push("]}");
+          }
+          cb();
+        }
+      )
+    )
+    .pipe(process.stdout);
+}
+
+if (!module.parent) {
+  ndjson_to_geojson(process.stdin, process.stdout);
+}
+
+module.exports = ndjson_to_geojson;

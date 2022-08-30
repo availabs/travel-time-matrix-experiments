@@ -12,6 +12,8 @@ services:
       - mongo
     ports:
       - "7070:7070"
+    volumes:
+      - ./r5/cache:/r5/cache
   ui:
     container_name: ui
     depends_on:

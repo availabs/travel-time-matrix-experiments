@@ -1,3 +1,5 @@
+import { createWriteStream } from "fs";
+
 import {
   rm as rmAsync,
   mkdir as mkdirAsync,
@@ -16,6 +18,38 @@ import RegionBoundariesDerivedDataController from "../RegionBoundariesController
 const gtfsStopsDirName = "gtfs_stops";
 const osmRegionExtractsDirName = "osm_region_extracts";
 const gtfsFeedsDirName = "gtfs_feeds";
+
+export async function createAllShapesGeoJsonFile(
+  gtfsDerivedDataController: GtfsDerivedDataController,
+  exportDataDir: string
+) {
+  const allShapesFilePath = join(exportDataDir, "all_shapes.geojson");
+  const ws = createWriteStream(allShapesFilePath);
+
+  const shapesIter =
+    gtfsDerivedDataController.makeAllAgenciesShapesAsyncGenerator();
+
+  ws.write('{"type": "FeatureCollection","features": [');
+
+  let firstLine = true;
+  for await (const feature of shapesIter) {
+    if (!firstLine) {
+      ws.write(",");
+    }
+
+    const good = ws.write(JSON.stringify(feature));
+
+    if (!good) {
+      await new Promise((resolve) => ws.once("drain", resolve));
+    }
+
+    firstLine = false;
+  }
+
+  ws.write("]}");
+
+  ws.close();
+}
 
 export default async function exportProjectDirectory(
   projectDataDir: string,
@@ -83,5 +117,7 @@ export default async function exportProjectDirectory(
     `);
 
     await writeFileAsync(join(exportDataDir, "ANALYSIS_BOUNDS"), d);
+
+    createAllShapesGeoJsonFile(controller, exportDataDir);
   }
 }
