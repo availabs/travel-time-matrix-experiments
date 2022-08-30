@@ -1,0 +1,92 @@
+#!/bin/bash
+
+set -e
+
+PROJECT_NAME=nyc_201909
+REGION_BOUNDARY_NAME=all_agencies.buffer-15mi_concavity-10
+
+#  This command was used to copy all the local GTFS feed files from the local machine to the production server.
+#    As transit-admin.511ny.org does not provide an API for downloads, it seems that it will be necessary
+#    to download the feed files using a browser then send them to the production server using scp.
+# scp -r ./unassimilated_data/gtfs saturn:code/travel-time-matrix-experiments/createTransitAgencyBundles.v0_0_1/unassimilated_data/
+
+# Add the OSM Map
+./run osm_add_pbf_to_base_data --osmPbfPath ./unassimilated_data/osm/us-northeast-200101.osm.pbf --osmExtractRegion us-northeast  --osmMapDate 200101
+
+# Initialize the nyc_201909 project
+./run osm_set_project_osm_base --projectDataDir "$PROJECT_NAME" --osmExtractRegion us-northeast --osmMapDate 200101
+
+# Integrate the GTFS Feeds to the base_data
+./run gtfs_add_feed_to_base_data --gtfsAgencyName bronx_bus --gtfsFeedZipPath ./unassimilated_data/gtfs/Bronx_Bus-20190903T141619Z-ca418447-35a5-4bce-8ced-d230616e7ff5.zip
+./run gtfs_add_feed_to_base_data --gtfsAgencyName brooklyn_bus --gtfsFeedZipPath ./unassimilated_data/gtfs/Brooklyn_Bus-20190903T144424Z-c3ffe8d4-7331-4ac2-90e0-b59fd5c5b014.zip
+./run gtfs_add_feed_to_base_data --gtfsAgencyName long_island_rr --gtfsFeedZipPath ./unassimilated_data/gtfs/Long_Island_Rail_Road-20190830T202015Z-fb73d63b-29e1-4a76-be74-0c3d3c5dd341.zip
+./run gtfs_add_feed_to_base_data --gtfsAgencyName manhattan_bus --gtfsFeedZipPath ./unassimilated_data/gtfs/Manhattan_Bus-20190903T144446Z-c27664d6-1e6a-443d-aa32-ca247777f7c8.zip
+./run gtfs_add_feed_to_base_data --gtfsAgencyName metro_north_rr --gtfsFeedZipPath ./unassimilated_data/gtfs/Metro-North_Railroad-20190903T142243Z-f3bfba4d-7137-49e7-8796-a53efc989458.zip
+./run gtfs_add_feed_to_base_data --gtfsAgencyName mta_bus_company --gtfsFeedZipPath ./unassimilated_data/gtfs/MTA_Bus_Company-20190903T143817Z-c80ed7f6-e374-405a-89e8-dfe34bc734a6.zip
+./run gtfs_add_feed_to_base_data --gtfsAgencyName mta_nyc_subway --gtfsFeedZipPath ./unassimilated_data/gtfs/MTA_New_York_City_Subway-20190816T190930Z-5ab746a6-a22a-4d58-8567-611e03e718a8.zip
+./run gtfs_add_feed_to_base_data --gtfsAgencyName nassau_intercounty_express --gtfsFeedZipPath ./unassimilated_data/gtfs/Nassau_Inter-County_Express-20190830T200950Z-1eef5b51-001f-41a4-9a71-47689a65477b.zip
+./run gtfs_add_feed_to_base_data --gtfsAgencyName queens_bus --gtfsFeedZipPath ./unassimilated_data/gtfs/Queens_Bus-20190903T144006Z-225f831b-fa0e-4138-a62d-13048e9fd3a3.zip
+./run gtfs_add_feed_to_base_data --gtfsAgencyName staten_island_bus --gtfsFeedZipPath ./unassimilated_data/gtfs/Staten_Island_Bus-20190906T150006Z-3effd49a-3b7a-46bb-8453-950496682dc6.zip
+./run gtfs_add_feed_to_base_data --gtfsAgencyName suffolk_transit --gtfsFeedZipPath ./unassimilated_data/gtfs/Suffolk_Transit-20190218T171850Z-87c64274-bcf2-470f-99de-d14d065dff99.zip
+./run gtfs_add_feed_to_base_data --gtfsAgencyName westchester_county_bee_line_system --gtfsFeedZipPath ./unassimilated_data/gtfs/Westchester_County_Bee-Line_System-20190829T144421Z-e3571abf-0284-4b6d-8a3c-0a9f8dbd8d33.zip
+
+# Show all agencies and feed versions in the base_data.
+./run gtfs_list_all_feed_versions
+
+# NOTE: gtfs_project_add_agency and gtfs_project_set_agency_feed_versionis are currently a bit redundant.
+#       The goal is to eventually replace gtfs_project_set_agency_feed_version with a command
+#         that takes a date and auto-selects the GTFS feed versions. For example,
+#
+#           ./run gtfs_project_set_feed_versions --projectDataDir nyc_201909 --date 201909
+
+# Add the GTFS Agencies to the nyc_201909 project.
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName bronx_bus
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName brooklyn_bus
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName long_island_rr
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName manhattan_bus
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName metro_north_rr
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName mta_bus_company
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName mta_nyc_subway
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName nassau_intercounty_express
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName queens_bus
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName staten_island_bus
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName suffolk_transit
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName westchester_county_bee_line_system
+
+# Set the GTFS Feed versions for the nyc_201909 project
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName bronx_bus --gtfsFeedVersion 20190831-20200104
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName brooklyn_bus --gtfsFeedVersion 20190831-20200104
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName long_island_rr --gtfsFeedVersion 20190723-20191110
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName manhattan_bus --gtfsFeedVersion 20190831-20200104
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName metro_north_rr --gtfsFeedVersion 20190828-20200328
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName mta_bus_company --gtfsFeedVersion 20190901-20200104
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName mta_nyc_subway --gtfsFeedVersion 20190428-20191116
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName nassau_intercounty_express --gtfsFeedVersion 20190623-20200104
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName queens_bus --gtfsFeedVersion 20190831-20200104
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName staten_island_bus --gtfsFeedVersion 20190901-20200104
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName suffolk_transit --gtfsFeedVersion 20190106-20191231
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName westchester_county_bee_line_system --gtfsFeedVersion 20190618-20200406
+
+# Create the nyc_201909 Transit Agencies Boundary
+./run create_all_agencies_hull --projectDataDir "$PROJECT_NAME"
+
+# List the region boundary names
+./run region_show_all_region_boundaries_names --projectDataDir "$PROJECT_NAME"
+
+# Create the nyc_201909 Transit Agencies OSM Extract
+./run osm_project_create_region_export --projectDataDir "$PROJECT_NAME" --regionBoundaryName $REGION_BOUNDARY_NAME
+
+# Create the nyc_201909 All GTFS Stops CSV
+./run gtfs_project_create_all_stops_csv --projectDataDir "$PROJECT_NAME"
+
+# Show all the routes for westchester_county_bee_line_system
+./run gtfs_project_show_routes_for_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName westchester_county_bee_line_system
+
+# Create a CSV of westchester_county_bee_line_system's Route #28 stops
+./run gtfs_project_create_agency_route_stops_csv --projectDataDir "$PROJECT_NAME" --gtfsAgencyName westchester_county_bee_line_system --gtfsRouteId 16816
+
+# Show the Conveyal transit analysis region bounding box coordinates
+./run region_show_analysis_bounds --projectDataDir "$PROJECT_NAME" --regionBoundaryName $REGION_BOUNDARY_NAME
+
+# Output the project's transit data bundle.
+./run export_transit_data_bundle --projectDataDir "$PROJECT_NAME" --exportDataDir "${PROJECT_NAME}_bundle"

@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -e
+
+PROJECT_NAME=yates_202109
+REGION_BOUNDARY_NAME=all_agencies.buffer-15mi_concavity-10
+
+rm -rf "$PROJECT_NAME"
+
+# Add the OSM Map
+./run osm_add_pbf_to_base_data --osmPbfPath ./unassimilated_data/osm/yates-demo-220101.osm.pbf --osmExtractRegion yates-demo  --osmMapDate 220101
+
+# Integrate the GTFS Feeds to the base_data
+./run gtfs_add_feed_to_base_data --gtfsAgencyName yates --gtfsFeedZipPath ./unassimilated_data/gtfs/Yates_Transit_Service-20210608T200011Z-f5f844c7-4dcf-4c52-8584-5e8abba734f6-bff7f604-6ae5-45dd-b33e-861d4d7420f2.zip
+
+# Initialize the project
+./run osm_set_project_osm_base --projectDataDir "$PROJECT_NAME" --osmExtractRegion yates-demo --osmMapDate 220101
+
+# Add the GTFS Agencies to the project.
+./run gtfs_project_add_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName yates
+
+# Set the GTFS Feed versions for the project
+./run gtfs_project_set_agency_feed_version --projectDataDir "$PROJECT_NAME" --gtfsAgencyName yates --gtfsFeedVersion 20210705-20221231
+
+# Create the Transit Agencies Boundary
+./run create_all_agencies_hull --projectDataDir "$PROJECT_NAME"
+
+# List the region boundary names
+./run region_show_all_region_boundaries_names --projectDataDir "$PROJECT_NAME"
+
+# Create the Transit Agencies OSM Extract
+./run osm_project_create_region_export --projectDataDir "$PROJECT_NAME" --regionBoundaryName $REGION_BOUNDARY_NAME
+
+# Create the All GTFS Stops CSV
+./run gtfs_project_create_all_stops_csv --projectDataDir "$PROJECT_NAME"
+
+# Show all the routes for westchester_county_bee_line_system
+./run gtfs_project_show_routes_for_agency --projectDataDir "$PROJECT_NAME" --gtfsAgencyName yates
+
+# # Create a CSV of westchester_county_bee_line_system's Route #28 stops
+./run gtfs_project_create_agency_route_stops_csv --projectDataDir "$PROJECT_NAME" --gtfsAgencyName yates --gtfsRouteId RTE_01
+
+# # Show the Conveyal transit analysis region bounding box coordinates
+./run region_show_analysis_bounds --projectDataDir "$PROJECT_NAME" --regionBoundaryName $REGION_BOUNDARY_NAME
+
+# # Output the project's transit data bundle.
+./run export_transit_data_bundle --projectDataDir "$PROJECT_NAME" --exportDataDir "${PROJECT_NAME}_bundle"
