@@ -18,6 +18,7 @@ import { join, basename, relative } from "path";
 import fetch from "node-fetch";
 
 import AbstractBaseDataController from "../../core/AbstractBaseDataController";
+import getHash from "../../utils/getHash";
 
 const pipelineAsync = promisify(pipeline);
 
@@ -93,6 +94,13 @@ export class OsmBaseDataController extends AbstractBaseDataController {
     const fpath = this.getOsmPbfPath(fname);
 
     if (existsSync(fpath)) {
+      const streamHash = await getHash(osmPbfReadStream);
+      const fileHash = await getHash(createReadStream(fpath));
+
+      if (streamHash === fileHash) {
+        return;
+      }
+
       throw new Error(`File ${relative(process.cwd(), fpath)} already exists.`);
     }
 

@@ -42,7 +42,7 @@ export default class RegionBoundariesDerivedDataController extends AbstractDataC
   }
 
   getRegionBoundingBoxFilePath(regionBoundaryName: string) {
-    const fname = `${regionBoundaryName}.geojson`;
+    const fname = `${regionBoundaryName}.json`;
     const fpath = join(this.regionBoundingBoxesDir, fname);
 
     return fpath;

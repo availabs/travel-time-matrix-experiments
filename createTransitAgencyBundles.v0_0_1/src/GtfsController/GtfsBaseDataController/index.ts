@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, createReadStream } from "fs";
 import { rename as renameAsync } from "fs/promises";
 
 import {
@@ -15,9 +15,9 @@ import tmp from "tmp";
 import AbstractBaseDataController from "../../core/AbstractBaseDataController";
 
 import loadGtfsIntoSqlite from "./subtasks/loadGtfsIntoSqlite";
+import getHash from "../../utils/getHash";
 
 import { GtfsAgencyName, GtfsFeedVersion } from "../index.d";
-import { gtfsAgencyName } from "../tasks/task_wrappers";
 
 export type AddGtfsFeedParams = {
   gtfsAgencyName: GtfsAgencyName;
@@ -153,6 +153,14 @@ export class GtfsBaseDataController extends AbstractBaseDataController {
       );
 
       if (existsSync(gtfsFeedVersionZipPath)) {
+        const newHash = await getHash(createReadStream(gtfsFeedZipPath));
+        const oldHash = await getHash(createReadStream(gtfsFeedVersionZipPath));
+
+        if (newHash === oldHash) {
+          await rmAsync(tmpGtfsFeedDbPath, { force: true });
+          return;
+        }
+
         throw new Error(
           `A GTFS Feed named ${gtfsFeedFileName} already exists for GTFS Agency ${gtfsAgencyName} version ${gtfsFeedVersion}.`
         );
